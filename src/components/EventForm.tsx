@@ -30,15 +30,16 @@ interface GeoResult {
 async function geocodeAddress(address: string): Promise<GeoResult | null> {
   if (!address.trim()) return null
   try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&accept-language=zh-TW`
+    // Photon (komoot) — better POI coverage than Nominatim, still free & no key needed
+    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=1&lang=zh`
     const res = await fetch(url, { headers: { 'User-Agent': 'TravelApp/1.0' } })
     const data = await res.json()
-    if (data.length > 0) {
-      return {
-        lat: parseFloat(data[0].lat),
-        lng: parseFloat(data[0].lon),
-        displayName: data[0].display_name as string,
-      }
+    const feature = data?.features?.[0]
+    if (feature) {
+      const [lng, lat] = feature.geometry.coordinates
+      const p = feature.properties
+      const name = [p.name, p.city, p.state, p.country].filter(Boolean).join(', ')
+      return { lat, lng, displayName: name || address }
     }
   } catch {}
   return null
@@ -216,16 +217,26 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
 
             {/* Address */}
             <Text style={s.label}>地點</Text>
-            <TextInput
-              style={s.input}
-              value={form.address}
-              onChangeText={(v) => set('address', v)}
-              placeholderTextColor="#94A3B8"
-              placeholder="例：新千歲機場、東京駅..."
-              maxLength={200}
-              onSubmitEditing={searchLocation}
-              returnKeyType="search"
-            />
+            <View style={s.addressRow}>
+              <TextInput
+                style={[s.input, s.addressInput]}
+                value={form.address}
+                onChangeText={(v) => set('address', v)}
+                placeholderTextColor="#94A3B8"
+                placeholder="例：Vessel Hotel Campana Susukino..."
+                maxLength={200}
+                onSubmitEditing={searchLocation}
+                returnKeyType="search"
+              />
+              {form.address.length > 0 && (
+                <TouchableOpacity
+                  style={s.clearBtn}
+                  onPress={() => { set('address', ''); setGeoState('idle'); setGeoResult(null) }}
+                >
+                  <Text style={s.clearBtnText}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <TouchableOpacity
               style={[s.searchBtn, geoState === 'searching' && s.searchBtnDisabled]}
               onPress={searchLocation}
@@ -348,6 +359,14 @@ const s = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   catText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
+  addressRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  addressInput: { flex: 1 },
+  clearBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: '#E2E8F0',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  clearBtnText: { fontSize: 13, color: '#64748B', fontWeight: '600' },
   searchBtn: {
     marginTop: 8,
     flexDirection: 'row',
