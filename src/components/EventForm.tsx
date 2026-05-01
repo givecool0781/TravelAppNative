@@ -1,10 +1,26 @@
 import React, { useState } from 'react'
 import {
   Modal, View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ScrollView, KeyboardAvoidingView, Platform,
+  StyleSheet, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native'
 import type { TripEvent, EventCategory } from '../types'
 import { sanitizeEventInput, validateEvent, type EventFormErrors } from '../utils/validation'
+
+const MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ?? ''
+
+async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  if (!address.trim() || !MAPS_KEY) return null
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${MAPS_KEY}&language=zh-TW`
+    const res = await fetch(url)
+    const data = await res.json()
+    if (data.status === 'OK' && data.results[0]) {
+      const { lat, lng } = data.results[0].geometry.location
+      return { lat, lng }
+    }
+  } catch {}
+  return null
+}
 
 const CATEGORIES: { value: EventCategory; label: string; color: string }[] = [
   { value: 'food', label: '餐廳', color: '#EA580C' },
@@ -37,6 +53,7 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
     phone: existingEvent?.phone ?? '',
   })
   const [errors, setErrors] = useState<EventFormErrors>({})
+  const [saving, setSaving] = useState(false)
 
   React.useEffect(() => {
     if (visible) {
@@ -59,10 +76,24 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
     setErrors((e) => ({ ...e, [field]: undefined }))
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const sanitized = sanitizeEventInput(form)
     const errs = validateEvent(sanitized)
     if (Object.keys(errs).length > 0) { setErrors(errs); return }
+
+    setSaving(true)
+
+    // Geocode if address changed or coordinates not yet set
+    let coords: { lat: number; lng: number } | null = null
+    if (sanitized.address) {
+      const existingCoords = existingEvent?.location
+      const addressChanged = sanitized.address !== existingEvent?.location?.address
+      if (!existingCoords || addressChanged || existingCoords.lat === 0) {
+        coords = await geocodeAddress(sanitized.address)
+      } else {
+        coords = { lat: existingCoords.lat, lng: existingCoords.lng }
+      }
+    }
 
     const event: TripEvent = {
       id: existingEvent?.id ?? `ev-${generateId()}`,
@@ -74,9 +105,11 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
       website: sanitized.website || undefined,
       phone: sanitized.phone || undefined,
       location: sanitized.address
-        ? { lat: existingEvent?.location?.lat ?? 0, lng: existingEvent?.location?.lng ?? 0, address: sanitized.address }
+        ? { lat: coords?.lat ?? 0, lng: coords?.lng ?? 0, address: sanitized.address }
         : undefined,
     }
+
+    setSaving(false)
     onSave(event)
     onClose()
   }
@@ -90,8 +123,11 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
               <Text style={s.cancelLink}>取消</Text>
             </TouchableOpacity>
             <Text style={s.headerTitle}>{existingEvent ? '編輯行程' : '新增行程'}</Text>
-            <TouchableOpacity onPress={handleSubmit}>
-              <Text style={s.saveLink}>儲存</Text>
+            <TouchableOpacity onPress={handleSubmit} disabled={saving}>
+              {saving
+                ? <ActivityIndicator size="small" color="#2563EB" />
+                : <Text style={s.saveLink}>儲存</Text>
+              }
             </TouchableOpacity>
           </View>
 
