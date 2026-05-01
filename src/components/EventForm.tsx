@@ -3,19 +3,40 @@ import {
   Modal, View, Text, TextInput, TouchableOpacity,
   StyleSheet, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native'
+import DateTimePicker from '@react-native-community/datetimepicker'
 import type { TripEvent, EventCategory } from '../types'
 import { sanitizeEventInput, validateEvent, type EventFormErrors } from '../utils/validation'
 
 const MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ?? ''
 
+function timeStringToDate(time: string): Date {
+  const [h, m] = time.split(':').map(Number)
+  const d = new Date()
+  d.setHours(isNaN(h) ? 9 : h, isNaN(m) ? 0 : m, 0, 0)
+  return d
+}
+
+function dateToTimeString(d: Date): string {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   if (!address.trim() || !MAPS_KEY) return null
   try {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${MAPS_KEY}&language=zh-TW`
-    const res = await fetch(url)
-    const data = await res.json()
-    if (data.status === 'OK' && data.results[0]) {
-      const { lat, lng } = data.results[0].geometry.location
+    // Try Places Text Search first (same API key as Places)
+    const placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(address)}&key=${MAPS_KEY}&language=zh-TW`
+    const placesRes = await fetch(placesUrl)
+    const placesData = await placesRes.json()
+    if (placesData.status === 'OK' && placesData.results?.[0]) {
+      const { lat, lng } = placesData.results[0].geometry.location
+      return { lat, lng }
+    }
+    // Fallback: Geocoding API
+    const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${MAPS_KEY}&language=zh-TW`
+    const geoRes = await fetch(geoUrl)
+    const geoData = await geoRes.json()
+    if (geoData.status === 'OK' && geoData.results?.[0]) {
+      const { lat, lng } = geoData.results[0].geometry.location
       return { lat, lng }
     }
   } catch {}
@@ -145,16 +166,15 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
             {errors.title && <Text style={s.errorText}>{errors.title}</Text>}
 
             {/* Time */}
-            <Text style={s.label}>時間 * (HH:MM)</Text>
-            <TextInput
-              style={[s.input, errors.time && s.inputError]}
-              value={form.time}
-              onChangeText={(v) => set('time', v)}
-              placeholderTextColor="#94A3B8"
-              placeholder="09:00"
-              keyboardType="numbers-and-punctuation"
-              maxLength={5}
-            />
+            <Text style={s.label}>時間</Text>
+            <View style={s.timeBox}>
+              <DateTimePicker
+                value={timeStringToDate(form.time)}
+                mode="time"
+                display="compact"
+                onChange={(_, date) => { if (date) set('time', dateToTimeString(date)) }}
+              />
+            </View>
             {errors.time && <Text style={s.errorText}>{errors.time}</Text>}
 
             {/* Category */}
@@ -260,6 +280,14 @@ const s = StyleSheet.create({
   saveLink: { fontSize: 16, color: '#2563EB', fontWeight: '600' },
   body: { flex: 1, padding: 20 },
   label: { fontSize: 13, fontWeight: '600', color: '#334155', marginBottom: 6, marginTop: 16 },
+  timeBox: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
   input: {
     backgroundColor: '#fff',
     borderWidth: 1,
