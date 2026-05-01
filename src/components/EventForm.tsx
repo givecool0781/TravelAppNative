@@ -30,16 +30,29 @@ interface GeoResult {
 async function geocodeAddress(address: string): Promise<GeoResult | null> {
   if (!address.trim()) return null
   try {
-    // Photon (komoot) — better POI coverage than Nominatim, still free & no key needed
-    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=1&lang=zh`
-    const res = await fetch(url, { headers: { 'User-Agent': 'TravelApp/1.0' } })
-    const data = await res.json()
-    const feature = data?.features?.[0]
-    if (feature) {
-      const [lng, lat] = feature.geometry.coordinates
-      const p = feature.properties
-      const name = [p.name, p.city, p.state, p.country].filter(Boolean).join(', ')
-      return { lat, lng, displayName: name || address }
+    // Google Places Text Search — best POI coverage
+    const placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(address)}&key=${MAPS_KEY}&language=zh-TW`
+    const placesRes = await fetch(placesUrl)
+    const placesData = await placesRes.json()
+    if (placesData.status === 'OK' && placesData.results?.[0]) {
+      const r = placesData.results[0]
+      return {
+        lat: r.geometry.location.lat,
+        lng: r.geometry.location.lng,
+        displayName: r.name + (r.formatted_address ? `\n${r.formatted_address}` : ''),
+      }
+    }
+    // Fallback: Google Geocoding API
+    const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${MAPS_KEY}&language=zh-TW`
+    const geoRes = await fetch(geoUrl)
+    const geoData = await geoRes.json()
+    if (geoData.status === 'OK' && geoData.results?.[0]) {
+      const r = geoData.results[0]
+      return {
+        lat: r.geometry.location.lat,
+        lng: r.geometry.location.lng,
+        displayName: r.formatted_address,
+      }
     }
   } catch {}
   return null
