@@ -1,21 +1,17 @@
 import React, { useState } from 'react'
-import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  SafeAreaView, Alert,
-} from 'react-native'
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { useTripContext } from '../src/context/TripContext'
+import { useAuth } from '../src/context/AuthContext'
 import TripForm from '../src/components/TripForm'
 import ConfirmDialog from '../src/components/ConfirmDialog'
 import type { Trip } from '../src/types'
 
-function generateId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-}
-
 export default function HomeScreen() {
   const router = useRouter()
   const { trips, addTrip, updateTrip, deleteTrip, loaded } = useTripContext()
+  const { email, signOut } = useAuth()
   const [showForm, setShowForm] = useState(false)
   const [editingTrip, setEditingTrip] = useState<Trip | undefined>()
   const [deletingTripId, setDeletingTripId] = useState<string | undefined>()
@@ -38,32 +34,29 @@ export default function HomeScreen() {
   }
 
   function formatDateRange(start: string, end: string) {
-    const fmt = (d: string) => {
-      const [y, m, day] = d.split('-')
-      return `${m}/${day}`
-    }
+    const fmt = (d: string) => { const [, m, day] = d.split('-'); return `${m}/${day}` }
     return `${start.slice(0, 4)}  ${fmt(start)} ～ ${fmt(end)}`
-  }
-
-  function getDayCount(trip: Trip) {
-    return trip.days.length
-  }
-
-  function getEventCount(trip: Trip) {
-    return trip.days.reduce((sum, d) => sum + d.events.length, 0)
   }
 
   return (
     <SafeAreaView style={s.container}>
       {/* Header */}
       <View style={s.header}>
-        <Text style={s.headerTitle}>我的旅行</Text>
-        <TouchableOpacity
-          style={s.addBtn}
-          onPress={() => { setEditingTrip(undefined); setShowForm(true) }}
-        >
-          <Text style={s.addBtnText}>+ 新增</Text>
-        </TouchableOpacity>
+        <View>
+          <Text style={s.headerTitle}>我的旅行</Text>
+          <Text style={s.headerEmail} numberOfLines={1}>{email}</Text>
+        </View>
+        <View style={s.headerActions}>
+          <TouchableOpacity
+            style={s.addBtn}
+            onPress={() => { setEditingTrip(undefined); setShowForm(true) }}
+          >
+            <Text style={s.addBtnText}>+ 新增</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.logoutBtn} onPress={signOut}>
+            <Text style={s.logoutText}>登出</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {trips.length === 0 ? (
@@ -85,20 +78,16 @@ export default function HomeScreen() {
                   <Text style={s.cardName} numberOfLines={1}>{trip.name}</Text>
                   <Text style={s.cardSub}>{trip.destination}・{trip.country}</Text>
                   <Text style={s.cardDate}>{formatDateRange(trip.startDate, trip.endDate)}</Text>
-                  <Text style={s.cardMeta}>{getDayCount(trip)} 天・{getEventCount(trip)} 個行程</Text>
+                  <Text style={s.cardMeta}>
+                    {trip.days.length} 天・{trip.days.reduce((s, d) => s + d.events.length, 0)} 個行程
+                  </Text>
                 </View>
               </View>
               <View style={s.cardActions}>
-                <TouchableOpacity
-                  style={s.iconBtn}
-                  onPress={() => { setEditingTrip(trip); setShowForm(true) }}
-                >
+                <TouchableOpacity style={s.iconBtn} onPress={() => { setEditingTrip(trip); setShowForm(true) }}>
                   <Text style={s.iconBtnText}>✏️</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={s.iconBtn}
-                  onPress={() => setDeletingTripId(trip.id)}
-                >
+                <TouchableOpacity style={s.iconBtn} onPress={() => setDeletingTripId(trip.id)}>
                   <Text style={s.iconBtnText}>🗑️</Text>
                 </TouchableOpacity>
               </View>
@@ -134,31 +123,24 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 14,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
   headerTitle: { fontSize: 22, fontWeight: '800', color: '#0F172A' },
-  addBtn: {
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
+  headerEmail: { fontSize: 12, color: '#94A3B8', marginTop: 2, maxWidth: 160 },
+  headerActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  addBtn: { backgroundColor: '#2563EB', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   addBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  logoutBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0' },
+  logoutText: { color: '#64748B', fontSize: 13, fontWeight: '500' },
   list: { padding: 16, gap: 12 },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: '#fff', borderRadius: 20, padding: 16,
+    flexDirection: 'row', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
   },
   cardLeft: { flex: 1, flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
   cardEmoji: { fontSize: 36 },

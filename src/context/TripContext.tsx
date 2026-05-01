@@ -1,13 +1,9 @@
 import React, { createContext, useContext, useReducer, useEffect, useState } from 'react'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import type { Trip, TripDay, TripEvent } from '../types'
-import { mockTrips } from '../data/mockData'
+import type { Trip, TripEvent } from '../types'
+import * as api from '../api'
+import { useAuth } from './AuthContext'
 
-const STORAGE_KEY = 'travelapp_trips_v1'
-
-interface State {
-  trips: Trip[]
-}
+interface State { trips: Trip[] }
 
 type Action =
   | { type: 'SET_TRIPS'; trips: Trip[] }
@@ -20,114 +16,95 @@ type Action =
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'SET_TRIPS':
-      return { trips: action.trips }
-
-    case 'ADD_TRIP':
-      return { trips: [...state.trips, action.trip] }
-
-    case 'UPDATE_TRIP':
-      return { trips: state.trips.map((t) => (t.id === action.trip.id ? action.trip : t)) }
-
-    case 'DELETE_TRIP':
-      return { trips: state.trips.filter((t) => t.id !== action.tripId) }
-
-    case 'ADD_EVENT':
-      return {
-        trips: state.trips.map((t) =>
-          t.id !== action.tripId
-            ? t
-            : {
-                ...t,
-                days: t.days.map((d) =>
-                  d.id !== action.dayId ? d : { ...d, events: [...d.events, action.event] }
-                ),
-              }
-        ),
-      }
-
-    case 'UPDATE_EVENT':
-      return {
-        trips: state.trips.map((t) =>
-          t.id !== action.tripId
-            ? t
-            : {
-                ...t,
-                days: t.days.map((d) =>
-                  d.id !== action.dayId
-                    ? d
-                    : { ...d, events: d.events.map((e) => (e.id === action.event.id ? action.event : e)) }
-                ),
-              }
-        ),
-      }
-
-    case 'DELETE_EVENT':
-      return {
-        trips: state.trips.map((t) =>
-          t.id !== action.tripId
-            ? t
-            : {
-                ...t,
-                days: t.days.map((d) =>
-                  d.id !== action.dayId
-                    ? d
-                    : { ...d, events: d.events.filter((e) => e.id !== action.eventId) }
-                ),
-              }
-        ),
-      }
-
-    default:
-      return state
+    case 'SET_TRIPS': return { trips: action.trips }
+    case 'ADD_TRIP': return { trips: [...state.trips, action.trip] }
+    case 'UPDATE_TRIP': return { trips: state.trips.map((t) => t.id === action.trip.id ? action.trip : t) }
+    case 'DELETE_TRIP': return { trips: state.trips.filter((t) => t.id !== action.tripId) }
+    case 'ADD_EVENT': return {
+      trips: state.trips.map((t) => t.id !== action.tripId ? t : {
+        ...t, days: t.days.map((d) => d.id !== action.dayId ? d : { ...d, events: [...d.events, action.event] })
+      })
+    }
+    case 'UPDATE_EVENT': return {
+      trips: state.trips.map((t) => t.id !== action.tripId ? t : {
+        ...t, days: t.days.map((d) => d.id !== action.dayId ? d : {
+          ...d, events: d.events.map((e) => e.id === action.event.id ? action.event : e)
+        })
+      })
+    }
+    case 'DELETE_EVENT': return {
+      trips: state.trips.map((t) => t.id !== action.tripId ? t : {
+        ...t, days: t.days.map((d) => d.id !== action.dayId ? d : {
+          ...d, events: d.events.filter((e) => e.id !== action.eventId)
+        })
+      })
+    }
+    default: return state
   }
 }
 
 interface TripContextValue {
   trips: Trip[]
   loaded: boolean
-  addTrip: (trip: Trip) => void
-  updateTrip: (trip: Trip) => void
-  deleteTrip: (tripId: string) => void
-  addEvent: (tripId: string, dayId: string, event: TripEvent) => void
-  updateEvent: (tripId: string, dayId: string, event: TripEvent) => void
-  deleteEvent: (tripId: string, dayId: string, eventId: string) => void
+  addTrip: (trip: Trip) => Promise<void>
+  updateTrip: (trip: Trip) => Promise<void>
+  deleteTrip: (tripId: string) => Promise<void>
+  addEvent: (tripId: string, dayId: string, event: TripEvent) => Promise<void>
+  updateEvent: (tripId: string, dayId: string, event: TripEvent) => Promise<void>
+  deleteEvent: (tripId: string, dayId: string, eventId: string) => Promise<void>
 }
 
 const TripContext = createContext<TripContextValue | null>(null)
 
 export function TripProvider({ children }: { children: React.ReactNode }) {
+  const { token } = useAuth()
   const [state, dispatch] = useReducer(reducer, { trips: [] })
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => {
-        if (raw) {
-          const parsed = JSON.parse(raw)
-          dispatch({ type: 'SET_TRIPS', trips: Array.isArray(parsed) ? parsed : mockTrips })
-        } else {
-          dispatch({ type: 'SET_TRIPS', trips: mockTrips })
-        }
-      })
-      .catch(() => dispatch({ type: 'SET_TRIPS', trips: mockTrips }))
+    if (!token) { dispatch({ type: 'SET_TRIPS', trips: [] }); setLoaded(true); return }
+    setLoaded(false)
+    api.fetchTrips()
+      .then((trips) => dispatch({ type: 'SET_TRIPS', trips }))
+      .catch(() => dispatch({ type: 'SET_TRIPS', trips: [] }))
       .finally(() => setLoaded(true))
-  }, [])
+  }, [token])
 
-  useEffect(() => {
-    if (!loaded) return
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state.trips)).catch(() => {})
-  }, [state.trips, loaded])
+  async function addTrip(trip: Trip) {
+    const saved = await api.createTrip(trip)
+    dispatch({ type: 'ADD_TRIP', trip: saved })
+  }
 
-  const addTrip = (trip: Trip) => dispatch({ type: 'ADD_TRIP', trip })
-  const updateTrip = (trip: Trip) => dispatch({ type: 'UPDATE_TRIP', trip })
-  const deleteTrip = (tripId: string) => dispatch({ type: 'DELETE_TRIP', tripId })
-  const addEvent = (tripId: string, dayId: string, event: TripEvent) =>
-    dispatch({ type: 'ADD_EVENT', tripId, dayId, event })
-  const updateEvent = (tripId: string, dayId: string, event: TripEvent) =>
-    dispatch({ type: 'UPDATE_EVENT', tripId, dayId, event })
-  const deleteEvent = (tripId: string, dayId: string, eventId: string) =>
-    dispatch({ type: 'DELETE_EVENT', tripId, dayId, eventId })
+  async function updateTrip(trip: Trip) {
+    const saved = await api.updateTrip(trip)
+    dispatch({ type: 'UPDATE_TRIP', trip: saved })
+  }
+
+  async function deleteTrip(tripId: string) {
+    await api.deleteTrip(tripId)
+    dispatch({ type: 'DELETE_TRIP', tripId })
+  }
+
+  async function addEvent(tripId: string, dayId: string, event: TripEvent) {
+    const action: Action = { type: 'ADD_EVENT', tripId, dayId, event }
+    const updated = reducer(state, action).trips.find((t) => t.id === tripId)!
+    dispatch(action)
+    await api.updateTrip(updated)
+  }
+
+  async function updateEvent(tripId: string, dayId: string, event: TripEvent) {
+    const action: Action = { type: 'UPDATE_EVENT', tripId, dayId, event }
+    const updated = reducer(state, action).trips.find((t) => t.id === tripId)!
+    dispatch(action)
+    await api.updateTrip(updated)
+  }
+
+  async function deleteEvent(tripId: string, dayId: string, eventId: string) {
+    const action: Action = { type: 'DELETE_EVENT', tripId, dayId, eventId }
+    const updated = reducer(state, action).trips.find((t) => t.id === tripId)!
+    dispatch(action)
+    await api.updateTrip(updated)
+  }
 
   return (
     <TripContext.Provider value={{ trips: state.trips, loaded, addTrip, updateTrip, deleteTrip, addEvent, updateEvent, deleteEvent }}>
