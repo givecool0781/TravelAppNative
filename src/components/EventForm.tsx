@@ -1,13 +1,10 @@
-import React, { useState, useRef } from 'react'
+import React, { useState } from 'react'
 import {
   Modal, View, Text, TextInput, TouchableOpacity,
   StyleSheet, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native'
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete'
-import type { TripEvent, EventCategory, Location } from '../types'
+import type { TripEvent, EventCategory } from '../types'
 import { sanitizeEventInput, validateEvent, type EventFormErrors } from '../utils/validation'
-
-const MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ?? ''
 
 const CATEGORIES: { value: EventCategory; label: string; color: string }[] = [
   { value: 'food', label: '餐廳', color: '#EA580C' },
@@ -33,14 +30,13 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
     title: existingEvent?.title ?? '',
     time: existingEvent?.time ?? '09:00',
     category: (existingEvent?.category ?? 'attraction') as EventCategory,
+    address: existingEvent?.location?.address ?? '',
     duration: existingEvent?.duration ?? '',
     notes: existingEvent?.notes ?? '',
     website: existingEvent?.website ?? '',
     phone: existingEvent?.phone ?? '',
   })
-  const [location, setLocation] = useState<Location | undefined>(existingEvent?.location)
   const [errors, setErrors] = useState<EventFormErrors>({})
-  const placesRef = useRef<any>(null)
 
   React.useEffect(() => {
     if (visible) {
@@ -48,12 +44,12 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
         title: existingEvent?.title ?? '',
         time: existingEvent?.time ?? '09:00',
         category: (existingEvent?.category ?? 'attraction') as EventCategory,
+        address: existingEvent?.location?.address ?? '',
         duration: existingEvent?.duration ?? '',
         notes: existingEvent?.notes ?? '',
         website: existingEvent?.website ?? '',
         phone: existingEvent?.phone ?? '',
       })
-      setLocation(existingEvent?.location)
       setErrors({})
     }
   }, [visible, existingEvent?.id])
@@ -64,7 +60,7 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
   }
 
   function handleSubmit() {
-    const sanitized = sanitizeEventInput({ ...form, address: location?.address ?? '' })
+    const sanitized = sanitizeEventInput(form)
     const errs = validateEvent(sanitized)
     if (Object.keys(errs).length > 0) { setErrors(errs); return }
 
@@ -77,7 +73,9 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
       notes: sanitized.notes || undefined,
       website: sanitized.website || undefined,
       phone: sanitized.phone || undefined,
-      location,
+      location: sanitized.address
+        ? { lat: existingEvent?.location?.lat ?? 0, lng: existingEvent?.location?.lng ?? 0, address: sanitized.address }
+        : undefined,
     }
     onSave(event)
     onClose()
@@ -104,7 +102,7 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
               style={[s.input, errors.title && s.inputError]}
               value={form.title}
               onChangeText={(v) => set('title', v)}
-              placeholder="例：淺草寺"
+              placeholder="例：新千歲機場"
               maxLength={100}
             />
             {errors.title && <Text style={s.errorText}>{errors.title}</Text>}
@@ -137,40 +135,15 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
               ))}
             </View>
 
-            {/* Google Places */}
+            {/* Address */}
             <Text style={s.label}>地點</Text>
-            <GooglePlacesAutocomplete
-              ref={placesRef}
-              placeholder={location?.address ?? '搜尋地點...'}
-              onPress={(data: any, details: any) => {
-                if (details?.geometry) {
-                  setLocation({
-                    lat: details.geometry.location.lat,
-                    lng: details.geometry.location.lng,
-                    address: data.description,
-                    placeId: data.place_id,
-                  })
-                }
-              }}
-              query={{ key: MAPS_KEY, language: 'zh-TW' }}
-              fetchDetails
-              styles={{
-                textInput: { ...s.input, marginBottom: 0 },
-                listView: { backgroundColor: '#fff', borderRadius: 12, marginTop: 4 },
-                row: { padding: 12 },
-                description: { fontSize: 14 },
-              }}
-              textInputProps={{ placeholderTextColor: '#94A3B8' }}
-              enablePoweredByContainer={false}
+            <TextInput
+              style={s.input}
+              value={form.address}
+              onChangeText={(v) => set('address', v)}
+              placeholder="例：新千歲機場、東京駅..."
+              maxLength={200}
             />
-            {location?.address ? (
-              <View style={s.locationTag}>
-                <Text style={s.locationText} numberOfLines={1}>{location.address}</Text>
-                <TouchableOpacity onPress={() => setLocation(undefined)}>
-                  <Text style={s.locationClear}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
 
             {/* Duration */}
             <Text style={s.label}>預計時長</Text>
@@ -259,24 +232,9 @@ const s = StyleSheet.create({
   errorText: { fontSize: 12, color: '#DC2626', marginTop: 4 },
   catRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   catBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0',
     backgroundColor: '#F8FAFC',
   },
   catText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
-  locationTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginTop: 6,
-    gap: 8,
-  },
-  locationText: { flex: 1, fontSize: 13, color: '#1D4ED8' },
-  locationClear: { fontSize: 14, color: '#64748B' },
 })
