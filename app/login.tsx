@@ -67,6 +67,7 @@ export default function LoginScreen() {
             style={s.input}
             value={email}
             onChangeText={setEmail}
+            placeholderTextColor="#94A3B8"
             placeholder="your@email.com"
             keyboardType="email-address"
             autoCapitalize="none"
@@ -79,6 +80,7 @@ export default function LoginScreen() {
             style={s.input}
             value={password}
             onChangeText={setPassword}
+            placeholderTextColor="#94A3B8"
             placeholder="••••••••"
             secureTextEntry
           />

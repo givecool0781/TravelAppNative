@@ -132,6 +132,7 @@ export default function TripForm({ visible, existingTrip, onSave, onClose }: Pro
               style={[s.input, errors.name && s.inputError]}
               value={form.name}
               onChangeText={(v) => set('name', v)}
+              placeholderTextColor="#94A3B8"
               placeholder="例：北海道之旅"
               maxLength={80}
             />
@@ -145,7 +146,8 @@ export default function TripForm({ visible, existingTrip, onSave, onClose }: Pro
                   style={[s.input, errors.destination && s.inputError]}
                   value={form.destination}
                   onChangeText={(v) => set('destination', v)}
-                  placeholder="札幌"
+                  placeholderTextColor="#94A3B8"
+              placeholder="札幌"
                   maxLength={60}
                 />
                 {errors.destination && <Text style={s.errorText}>{errors.destination}</Text>}
@@ -156,7 +158,8 @@ export default function TripForm({ visible, existingTrip, onSave, onClose }: Pro
                   style={[s.input, errors.country && s.inputError]}
                   value={form.country}
                   onChangeText={(v) => set('country', v)}
-                  placeholder="日本"
+                  placeholderTextColor="#94A3B8"
+              placeholder="日本"
                   maxLength={60}
                 />
                 {errors.country && <Text style={s.errorText}>{errors.country}</Text>}

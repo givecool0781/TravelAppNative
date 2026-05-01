@@ -102,6 +102,7 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
               style={[s.input, errors.title && s.inputError]}
               value={form.title}
               onChangeText={(v) => set('title', v)}
+              placeholderTextColor="#94A3B8"
               placeholder="例：新千歲機場"
               maxLength={100}
             />
@@ -113,6 +114,7 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
               style={[s.input, errors.time && s.inputError]}
               value={form.time}
               onChangeText={(v) => set('time', v)}
+              placeholderTextColor="#94A3B8"
               placeholder="09:00"
               keyboardType="numbers-and-punctuation"
               maxLength={5}
@@ -141,6 +143,7 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
               style={s.input}
               value={form.address}
               onChangeText={(v) => set('address', v)}
+              placeholderTextColor="#94A3B8"
               placeholder="例：新千歲機場、東京駅..."
               maxLength={200}
             />
@@ -151,6 +154,7 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
               style={s.input}
               value={form.duration}
               onChangeText={(v) => set('duration', v)}
+              placeholderTextColor="#94A3B8"
               placeholder="例：1.5 小時"
               maxLength={40}
             />
@@ -161,6 +165,7 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
               style={[s.input, s.multiline]}
               value={form.notes}
               onChangeText={(v) => set('notes', v)}
+              placeholderTextColor="#94A3B8"
               placeholder="補充說明..."
               multiline
               numberOfLines={3}
@@ -173,6 +178,7 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
               style={[s.input, errors.website && s.inputError]}
               value={form.website}
               onChangeText={(v) => set('website', v)}
+              placeholderTextColor="#94A3B8"
               placeholder="https://..."
               keyboardType="url"
               autoCapitalize="none"
@@ -186,6 +192,7 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
               style={[s.input, errors.phone && s.inputError]}
               value={form.phone}
               onChangeText={(v) => set('phone', v)}
+              placeholderTextColor="#94A3B8"
               placeholder="+81-3-1234-5678"
               keyboardType="phone-pad"
               maxLength={30}
