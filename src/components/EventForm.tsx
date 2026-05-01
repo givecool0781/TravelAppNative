@@ -6,6 +6,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker'
 import type { TripEvent, EventCategory } from '../types'
 import { sanitizeEventInput, validateEvent, type EventFormErrors } from '../utils/validation'
+import DurationPicker from './DurationPicker'
 
 const MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ?? ''
 
@@ -21,23 +22,15 @@ function dateToTimeString(d: Date): string {
 }
 
 async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
-  if (!address.trim() || !MAPS_KEY) return null
+  if (!address.trim()) return null
   try {
-    // Try Places Text Search first (same API key as Places)
-    const placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(address)}&key=${MAPS_KEY}&language=zh-TW`
-    const placesRes = await fetch(placesUrl)
-    const placesData = await placesRes.json()
-    if (placesData.status === 'OK' && placesData.results?.[0]) {
-      const { lat, lng } = placesData.results[0].geometry.location
-      return { lat, lng }
-    }
-    // Fallback: Geocoding API
-    const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${MAPS_KEY}&language=zh-TW`
-    const geoRes = await fetch(geoUrl)
-    const geoData = await geoRes.json()
-    if (geoData.status === 'OK' && geoData.results?.[0]) {
-      const { lat, lng } = geoData.results[0].geometry.location
-      return { lat, lng }
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&accept-language=zh-TW`
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'TravelApp/1.0' },
+    })
+    const data = await res.json()
+    if (data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
     }
   } catch {}
   return null
@@ -206,13 +199,9 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
 
             {/* Duration */}
             <Text style={s.label}>預計時長</Text>
-            <TextInput
-              style={s.input}
+            <DurationPicker
               value={form.duration}
-              onChangeText={(v) => set('duration', v)}
-              placeholderTextColor="#94A3B8"
-              placeholder="例：1.5 小時"
-              maxLength={40}
+              onChange={(v) => set('duration', v)}
             />
 
             {/* Notes */}
