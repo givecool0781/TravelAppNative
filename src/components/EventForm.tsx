@@ -31,10 +31,8 @@ async function geocodeAddress(address: string): Promise<GeoResult | null> {
   if (!address.trim()) return null
   try {
     const placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(address)}&key=${MAPS_KEY}&language=zh-TW`
-    console.log('[Geocode] Places URL:', placesUrl)
     const placesRes = await fetch(placesUrl)
     const placesData = await placesRes.json()
-    console.log('[Geocode] Places status:', placesData.status, '| results:', placesData.results?.length ?? 0)
     if (placesData.status === 'OK' && placesData.results?.[0]) {
       const r = placesData.results[0]
       return {
@@ -44,18 +42,13 @@ async function geocodeAddress(address: string): Promise<GeoResult | null> {
       }
     }
     const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${MAPS_KEY}&language=zh-TW`
-    console.log('[Geocode] Geocoding URL:', geoUrl)
     const geoRes = await fetch(geoUrl)
     const geoData = await geoRes.json()
-    console.log('[Geocode] Geocoding status:', geoData.status, '| results:', geoData.results?.length ?? 0)
     if (geoData.status === 'OK' && geoData.results?.[0]) {
       const r = geoData.results[0]
       return { lat: r.geometry.location.lat, lng: r.geometry.location.lng, displayName: r.formatted_address }
     }
-    console.warn('[Geocode] Both APIs failed. Places:', placesData.status, '| Geo:', geoData.status)
-  } catch (e) {
-    console.error('[Geocode] Error:', e)
-  }
+  } catch {}
   return null
 }
 
