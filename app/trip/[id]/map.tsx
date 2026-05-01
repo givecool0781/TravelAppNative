@@ -64,10 +64,13 @@ export default function MapScreen() {
       }
     : { latitude: 35.6812, longitude: 139.7671, latitudeDelta: 0.1, longitudeDelta: 0.1 }
 
-  function openNavigation(event: TripEvent) {
+  async function openNavigation(event: TripEvent) {
     if (!event.location) return
     const { lat, lng } = event.location
-    Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`)
+    const googleUrl = `comgooglemaps://?daddr=${lat},${lng}&directionsmode=driving`
+    const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+    const canGoogle = await Linking.canOpenURL(googleUrl)
+    Linking.openURL(canGoogle ? googleUrl : webUrl).catch(() => Linking.openURL(webUrl))
   }
 
   function focusMarker(item: EventWithDay) {

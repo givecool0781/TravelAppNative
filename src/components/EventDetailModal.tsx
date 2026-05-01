@@ -24,26 +24,30 @@ export default function EventDetailModal({ event, onClose, onEdit, onDelete }: P
   if (!event) return null
   const cfg = CATEGORY_CONFIG[event.category]
 
-  function openNavigation() {
+  async function openNavigation() {
     if (!event?.location) return
     const { lat, lng } = event.location
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
-    Linking.openURL(url)
+    const googleUrl = `comgooglemaps://?daddr=${lat},${lng}&directionsmode=driving`
+    const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+    const canGoogle = await Linking.canOpenURL(googleUrl)
+    Linking.openURL(canGoogle ? googleUrl : webUrl).catch(() => Linking.openURL(webUrl))
   }
 
-  function openMaps() {
+  async function openMaps() {
     if (!event?.location) return
     const query = encodeURIComponent(event.location.address)
-    const url = `https://maps.apple.com/?q=${query}`
-    Linking.openURL(url)
+    const appleUrl = `maps://maps.apple.com/?q=${query}`
+    const webUrl = `https://maps.apple.com/?q=${query}`
+    const canApple = await Linking.canOpenURL(appleUrl)
+    Linking.openURL(canApple ? appleUrl : webUrl).catch(() => Linking.openURL(webUrl))
   }
 
   function openWebsite() {
-    if (event?.website) Linking.openURL(event.website)
+    if (event?.website) Linking.openURL(event.website).catch(() => {})
   }
 
   function callPhone() {
-    if (event?.phone) Linking.openURL(`tel:${event.phone}`)
+    if (event?.phone) Linking.openURL(`tel:${event.phone}`).catch(() => {})
   }
 
   return (

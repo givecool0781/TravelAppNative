@@ -89,6 +89,6 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  itemText: { fontSize: 16, color: '#94A3B8' },
+  itemText: { fontSize: 16, color: '#64748B' },
   itemTextActive: { color: '#2563EB', fontWeight: '700', fontSize: 17 },
 })
