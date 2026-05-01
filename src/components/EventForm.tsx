@@ -68,9 +68,21 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
   })
   const [errors, setErrors] = useState<EventFormErrors>({})
   const [saving, setSaving] = useState(false)
+  const [geoState, setGeoState] = useState<
+    'idle' | 'searching' | 'found' | 'notfound'
+  >('idle')
+  const [cachedCoords, setCachedCoords] = useState<{ lat: number; lng: number } | null>(
+    existingEvent?.location?.lat ? { lat: existingEvent.location.lat, lng: existingEvent.location.lng } : null
+  )
 
   React.useEffect(() => {
     if (visible) {
+      setGeoState('idle')
+      setCachedCoords(
+        existingEvent?.location?.lat
+          ? { lat: existingEvent.location.lat, lng: existingEvent.location.lng }
+          : null
+      )
       setForm({
         title: existingEvent?.title ?? '',
         time: existingEvent?.time ?? '09:00',
@@ -88,6 +100,20 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
   function set(field: keyof typeof form, value: string) {
     setForm((f) => ({ ...f, [field]: value }))
     setErrors((e) => ({ ...e, [field]: undefined }))
+    if (field === 'address') { setGeoState('idle'); setCachedCoords(null) }
+  }
+
+  async function searchLocation() {
+    if (!form.address.trim()) return
+    setGeoState('searching')
+    const coords = await geocodeAddress(form.address)
+    if (coords) {
+      setCachedCoords(coords)
+      setGeoState('found')
+    } else {
+      setCachedCoords(null)
+      setGeoState('notfound')
+    }
   }
 
   async function handleSubmit() {
@@ -97,16 +123,10 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
 
     setSaving(true)
 
-    // Geocode if address changed or coordinates not yet set
-    let coords: { lat: number; lng: number } | null = null
-    if (sanitized.address) {
-      const existingCoords = existingEvent?.location
-      const addressChanged = sanitized.address !== existingEvent?.location?.address
-      if (!existingCoords || addressChanged || existingCoords.lat === 0) {
-        coords = await geocodeAddress(sanitized.address)
-      } else {
-        coords = { lat: existingCoords.lat, lng: existingCoords.lng }
-      }
+    // Use cached coords from preview search, or geocode now if not yet searched
+    let coords = cachedCoords
+    if (sanitized.address && !coords) {
+      coords = await geocodeAddress(sanitized.address)
     }
 
     const event: TripEvent = {
@@ -195,7 +215,29 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
               placeholderTextColor="#94A3B8"
               placeholder="例：新千歲機場、東京駅..."
               maxLength={200}
+              onSubmitEditing={searchLocation}
+              returnKeyType="search"
             />
+            <TouchableOpacity
+              style={[s.searchBtn, geoState === 'searching' && s.searchBtnDisabled]}
+              onPress={searchLocation}
+              disabled={geoState === 'searching'}
+            >
+              {geoState === 'searching'
+                ? <ActivityIndicator size="small" color="#2563EB" />
+                : <Text style={s.searchBtnText}>🔍 確認地點</Text>
+              }
+            </TouchableOpacity>
+            {geoState === 'found' && (
+              <View style={s.geoResult}>
+                <Text style={s.geoFound}>✅ 已找到地點，地圖將顯示標記</Text>
+              </View>
+            )}
+            {geoState === 'notfound' && (
+              <View style={s.geoResult}>
+                <Text style={s.geoNotFound}>❌ 找不到此地點，請嘗試更完整的名稱</Text>
+              </View>
+            )}
 
             {/* Duration */}
             <Text style={s.label}>預計時長</Text>
@@ -297,4 +339,21 @@ const s = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   catText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
+  searchBtn: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2563EB',
+    backgroundColor: '#EFF6FF',
+    minHeight: 40,
+  },
+  searchBtnDisabled: { opacity: 0.6 },
+  searchBtnText: { fontSize: 14, color: '#2563EB', fontWeight: '600' },
+  geoResult: { marginTop: 6, paddingHorizontal: 4 },
+  geoFound: { fontSize: 13, color: '#15803D' },
+  geoNotFound: { fontSize: 13, color: '#DC2626' },
 })
