@@ -53,8 +53,6 @@ interface Props {
   onClose: () => void
 }
 
-type DateField = 'startDate' | 'endDate'
-
 export default function TripForm({ visible, existingTrip, onSave, onClose }: Props) {
   const [form, setForm] = useState({
     name: existingTrip?.name ?? '',
@@ -65,8 +63,6 @@ export default function TripForm({ visible, existingTrip, onSave, onClose }: Pro
     emoji: existingTrip?.emoji ?? '✈️',
   })
   const [errors, setErrors] = useState<TripFormErrors>({})
-  const [showPicker, setShowPicker] = useState<DateField | null>(null)
-  const [pickerDate, setPickerDate] = useState<Date>(new Date())
 
   React.useEffect(() => {
     if (visible) {
@@ -85,17 +81,6 @@ export default function TripForm({ visible, existingTrip, onSave, onClose }: Pro
   function set(field: keyof typeof form, value: string) {
     setForm((f) => ({ ...f, [field]: value }))
     setErrors((e) => ({ ...e, [field]: undefined }))
-  }
-
-  function openPicker(field: DateField) {
-    const current = form[field]
-    setPickerDate(current ? isoToDate(current) : new Date())
-    setShowPicker(field)
-  }
-
-  function confirmPicker() {
-    if (showPicker) set(showPicker, dateToISO(pickerDate))
-    setShowPicker(null)
   }
 
   function handleSubmit() {
@@ -178,50 +163,34 @@ export default function TripForm({ visible, existingTrip, onSave, onClose }: Pro
               </View>
             </View>
 
-            {/* Dates */}
+            {/* Dates — use compact display (native iOS date button + calendar popup) */}
             <View style={s.row}>
               <View style={s.half}>
                 <Text style={s.label}>出發日期 *</Text>
-                <TouchableOpacity
-                  style={[s.input, s.dateBtn, showPicker === 'startDate' && s.dateBtnActive, errors.startDate && s.inputError]}
-                  onPress={() => openPicker('startDate')}
-                >
-                  <Text style={form.startDate ? s.dateText : s.placeholder}>
-                    {form.startDate || '選擇日期'}
-                  </Text>
-                </TouchableOpacity>
+                <View style={[s.dateBox, errors.startDate && s.inputError]}>
+                  <DateTimePicker
+                    value={form.startDate ? isoToDate(form.startDate) : new Date()}
+                    mode="date"
+                    display="compact"
+                    onChange={(_, date) => { if (date) set('startDate', dateToISO(date)) }}
+                  />
+                </View>
                 {errors.startDate && <Text style={s.errorText}>{errors.startDate}</Text>}
               </View>
               <View style={s.half}>
                 <Text style={s.label}>回程日期 *</Text>
-                <TouchableOpacity
-                  style={[s.input, s.dateBtn, showPicker === 'endDate' && s.dateBtnActive, errors.endDate && s.inputError]}
-                  onPress={() => openPicker('endDate')}
-                >
-                  <Text style={form.endDate ? s.dateText : s.placeholder}>
-                    {form.endDate || '選擇日期'}
-                  </Text>
-                </TouchableOpacity>
+                <View style={[s.dateBox, errors.endDate && s.inputError]}>
+                  <DateTimePicker
+                    value={form.endDate ? isoToDate(form.endDate) : new Date()}
+                    mode="date"
+                    display="compact"
+                    onChange={(_, date) => { if (date) set('endDate', dateToISO(date)) }}
+                    minimumDate={form.startDate ? isoToDate(form.startDate) : undefined}
+                  />
+                </View>
                 {errors.endDate && <Text style={s.errorText}>{errors.endDate}</Text>}
               </View>
             </View>
-
-            {/* Inline date picker */}
-            {showPicker && (
-              <View style={s.pickerBox}>
-                <DateTimePicker
-                  value={pickerDate}
-                  mode="date"
-                  display="spinner"
-                  onChange={(_, date) => { if (date) setPickerDate(date) }}
-                  minimumDate={showPicker === 'endDate' && form.startDate ? isoToDate(form.startDate) : undefined}
-                  style={s.picker}
-                />
-                <TouchableOpacity style={s.pickerConfirmBtn} onPress={confirmPicker}>
-                  <Text style={s.pickerConfirmText}>確認</Text>
-                </TouchableOpacity>
-              </View>
-            )}
 
             <View style={{ height: 40 }} />
           </ScrollView>
@@ -261,10 +230,14 @@ const s = StyleSheet.create({
   },
   inputError: { borderColor: '#F87171', backgroundColor: '#FEF2F2' },
   errorText: { fontSize: 12, color: '#DC2626', marginTop: 4 },
-  dateBtn: { justifyContent: 'center' },
-  dateBtnActive: { borderColor: '#2563EB', backgroundColor: '#EFF6FF' },
-  dateText: { fontSize: 15, color: '#0F172A' },
-  placeholder: { fontSize: 15, color: '#94A3B8' },
+  dateBox: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
   pickerBox: {
     marginTop: 8,
     backgroundColor: '#fff',
