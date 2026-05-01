@@ -21,16 +21,24 @@ function dateToTimeString(d: Date): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+interface GeoResult {
+  lat: number
+  lng: number
+  displayName: string
+}
+
+async function geocodeAddress(address: string): Promise<GeoResult | null> {
   if (!address.trim()) return null
   try {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&accept-language=zh-TW`
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'TravelApp/1.0' },
-    })
+    const res = await fetch(url, { headers: { 'User-Agent': 'TravelApp/1.0' } })
     const data = await res.json()
     if (data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon),
+        displayName: data[0].display_name as string,
+      }
     }
   } catch {}
   return null
@@ -68,19 +76,19 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
   })
   const [errors, setErrors] = useState<EventFormErrors>({})
   const [saving, setSaving] = useState(false)
-  const [geoState, setGeoState] = useState<
-    'idle' | 'searching' | 'found' | 'notfound'
-  >('idle')
-  const [cachedCoords, setCachedCoords] = useState<{ lat: number; lng: number } | null>(
-    existingEvent?.location?.lat ? { lat: existingEvent.location.lat, lng: existingEvent.location.lng } : null
+  const [geoState, setGeoState] = useState<'idle' | 'searching' | 'found' | 'notfound'>('idle')
+  const [geoResult, setGeoResult] = useState<GeoResult | null>(
+    existingEvent?.location?.lat
+      ? { lat: existingEvent.location.lat, lng: existingEvent.location.lng, displayName: existingEvent.location.address }
+      : null
   )
 
   React.useEffect(() => {
     if (visible) {
       setGeoState('idle')
-      setCachedCoords(
+      setGeoResult(
         existingEvent?.location?.lat
-          ? { lat: existingEvent.location.lat, lng: existingEvent.location.lng }
+          ? { lat: existingEvent.location.lat, lng: existingEvent.location.lng, displayName: existingEvent.location.address }
           : null
       )
       setForm({
@@ -100,18 +108,18 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
   function set(field: keyof typeof form, value: string) {
     setForm((f) => ({ ...f, [field]: value }))
     setErrors((e) => ({ ...e, [field]: undefined }))
-    if (field === 'address') { setGeoState('idle'); setCachedCoords(null) }
+    if (field === 'address') { setGeoState('idle'); setGeoResult(null) }
   }
 
   async function searchLocation() {
     if (!form.address.trim()) return
     setGeoState('searching')
-    const coords = await geocodeAddress(form.address)
-    if (coords) {
-      setCachedCoords(coords)
+    const result = await geocodeAddress(form.address)
+    if (result) {
+      setGeoResult(result)
       setGeoState('found')
     } else {
-      setCachedCoords(null)
+      setGeoResult(null)
       setGeoState('notfound')
     }
   }
@@ -123,8 +131,8 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
 
     setSaving(true)
 
-    // Use cached coords from preview search, or geocode now if not yet searched
-    let coords = cachedCoords
+    // Use cached result from preview search, or geocode now if not yet searched
+    let coords = geoResult
     if (sanitized.address && !coords) {
       coords = await geocodeAddress(sanitized.address)
     }
@@ -228,9 +236,10 @@ export default function EventForm({ visible, existingEvent, onSave, onClose }: P
                 : <Text style={s.searchBtnText}>🔍 確認地點</Text>
               }
             </TouchableOpacity>
-            {geoState === 'found' && (
+            {geoState === 'found' && geoResult && (
               <View style={s.geoResult}>
-                <Text style={s.geoFound}>✅ 已找到地點，地圖將顯示標記</Text>
+                <Text style={s.geoFound}>✅ 找到：</Text>
+                <Text style={s.geoFoundName} numberOfLines={2}>{geoResult.displayName}</Text>
               </View>
             )}
             {geoState === 'notfound' && (
@@ -354,6 +363,7 @@ const s = StyleSheet.create({
   searchBtnDisabled: { opacity: 0.6 },
   searchBtnText: { fontSize: 14, color: '#2563EB', fontWeight: '600' },
   geoResult: { marginTop: 6, paddingHorizontal: 4 },
-  geoFound: { fontSize: 13, color: '#15803D' },
+  geoFound: { fontSize: 12, color: '#15803D', fontWeight: '600' },
+  geoFoundName: { fontSize: 12, color: '#334155', marginTop: 2, lineHeight: 18 },
   geoNotFound: { fontSize: 13, color: '#DC2626' },
 })
