@@ -183,7 +183,7 @@ export default function TripForm({ visible, existingTrip, onSave, onClose }: Pro
               <View style={s.half}>
                 <Text style={s.label}>出發日期 *</Text>
                 <TouchableOpacity
-                  style={[s.input, s.dateBtn, errors.startDate && s.inputError]}
+                  style={[s.input, s.dateBtn, showPicker === 'startDate' && s.dateBtnActive, errors.startDate && s.inputError]}
                   onPress={() => openPicker('startDate')}
                 >
                   <Text style={form.startDate ? s.dateText : s.placeholder}>
@@ -195,7 +195,7 @@ export default function TripForm({ visible, existingTrip, onSave, onClose }: Pro
               <View style={s.half}>
                 <Text style={s.label}>回程日期 *</Text>
                 <TouchableOpacity
-                  style={[s.input, s.dateBtn, errors.endDate && s.inputError]}
+                  style={[s.input, s.dateBtn, showPicker === 'endDate' && s.dateBtnActive, errors.endDate && s.inputError]}
                   onPress={() => openPicker('endDate')}
                 >
                   <Text style={form.endDate ? s.dateText : s.placeholder}>
@@ -206,43 +206,28 @@ export default function TripForm({ visible, existingTrip, onSave, onClose }: Pro
               </View>
             </View>
 
+            {/* Inline date picker */}
+            {showPicker && (
+              <View style={s.pickerBox}>
+                <DateTimePicker
+                  value={pickerDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={(_, date) => { if (date) setPickerDate(date) }}
+                  minimumDate={showPicker === 'endDate' && form.startDate ? isoToDate(form.startDate) : undefined}
+                  style={s.picker}
+                />
+                <TouchableOpacity style={s.pickerConfirmBtn} onPress={confirmPicker}>
+                  <Text style={s.pickerConfirmText}>確認</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             <View style={{ height: 40 }} />
           </ScrollView>
         </View>
       </Modal>
 
-      {/* Date picker bottom sheet */}
-      <Modal
-        visible={!!showPicker}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowPicker(null)}
-      >
-        <View style={s.pickerOverlay}>
-          <TouchableOpacity style={s.pickerBackdrop} onPress={() => setShowPicker(null)} />
-          <View style={s.pickerSheet}>
-            <View style={s.pickerHeader}>
-              <TouchableOpacity onPress={() => setShowPicker(null)}>
-                <Text style={s.pickerCancel}>取消</Text>
-              </TouchableOpacity>
-              <Text style={s.pickerTitle}>
-                {showPicker === 'startDate' ? '出發日期' : '回程日期'}
-              </Text>
-              <TouchableOpacity onPress={confirmPicker}>
-                <Text style={s.pickerDone}>完成</Text>
-              </TouchableOpacity>
-            </View>
-            <DateTimePicker
-              value={pickerDate}
-              mode="date"
-              display="spinner"
-              onChange={(_, date) => { if (date) setPickerDate(date) }}
-              minimumDate={showPicker === 'endDate' && form.startDate ? isoToDate(form.startDate) : undefined}
-              style={s.picker}
-            />
-          </View>
-        </View>
-      </Modal>
     </>
   )
 }
@@ -277,8 +262,26 @@ const s = StyleSheet.create({
   inputError: { borderColor: '#F87171', backgroundColor: '#FEF2F2' },
   errorText: { fontSize: 12, color: '#DC2626', marginTop: 4 },
   dateBtn: { justifyContent: 'center' },
+  dateBtnActive: { borderColor: '#2563EB', backgroundColor: '#EFF6FF' },
   dateText: { fontSize: 15, color: '#0F172A' },
   placeholder: { fontSize: 15, color: '#94A3B8' },
+  pickerBox: {
+    marginTop: 8,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+  },
+  pickerConfirmBtn: {
+    backgroundColor: '#2563EB',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  pickerConfirmText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   emojiRow: { flexDirection: 'row', marginBottom: 4 },
   emojiBtn: {
     width: 44, height: 44, borderRadius: 12,
@@ -289,21 +292,5 @@ const s = StyleSheet.create({
   emojiText: { fontSize: 22 },
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1 },
-  // Date picker bottom sheet
-  pickerOverlay: { flex: 1, justifyContent: 'flex-end' },
-  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
-  pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-  pickerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-  },
-  pickerTitle: { fontSize: 16, fontWeight: '600', color: '#0F172A' },
-  pickerCancel: { fontSize: 16, color: '#64748B' },
-  pickerDone: { fontSize: 16, color: '#2563EB', fontWeight: '600' },
   picker: { backgroundColor: '#fff' },
 })
