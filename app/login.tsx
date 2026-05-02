@@ -99,6 +99,12 @@ export default function LoginScreen() {
               : <Text style={s.submitText}>{mode === 'login' ? '登入' : '建立帳號'}</Text>
             }
           </TouchableOpacity>
+
+          {mode === 'login' && (
+            <TouchableOpacity style={s.forgotBtn} onPress={() => router.push('/forgot-password')}>
+              <Text style={s.forgotText}>忘記密碼？</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -162,4 +168,6 @@ const s = StyleSheet.create({
   },
   submitBtnDisabled: { opacity: 0.6 },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  forgotBtn: { marginTop: 14, alignItems: 'center' },
+  forgotText: { fontSize: 14, color: '#94A3B8' },
 })
