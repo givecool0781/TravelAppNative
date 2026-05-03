@@ -33,6 +33,15 @@ export default function EventDetailModal({ event, onClose, onEdit, onDelete }: P
     Linking.openURL(canGoogle ? googleUrl : webUrl).catch(() => Linking.openURL(webUrl))
   }
 
+  async function openTransit() {
+    if (!event?.location) return
+    const { lat, lng } = event.location
+    const googleUrl = `comgooglemaps://?daddr=${lat},${lng}&directionsmode=transit`
+    const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=transit`
+    const canGoogle = await Linking.canOpenURL(googleUrl)
+    Linking.openURL(canGoogle ? googleUrl : webUrl).catch(() => Linking.openURL(webUrl))
+  }
+
   async function openMaps() {
     if (!event?.location) return
     const query = encodeURIComponent(event.location.address)
@@ -94,6 +103,9 @@ export default function EventDetailModal({ event, onClose, onEdit, onDelete }: P
                   <Text style={[s.mapBtnText, { color: '#fff' }]}>🧭 導航前往</Text>
                 </TouchableOpacity>
               </View>
+              <TouchableOpacity style={s.transitBtn} onPress={openTransit}>
+                <Text style={s.transitBtnText}>🚃 查轉乘路線（乗換案内）</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -154,7 +166,16 @@ const s = StyleSheet.create({
   sectionLabel: { fontSize: 12, fontWeight: '600', color: '#94A3B8', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   notes: { fontSize: 15, color: '#334155', lineHeight: 24 },
   address: { fontSize: 15, color: '#334155', marginBottom: 10 },
-  mapBtns: { flexDirection: 'row', gap: 10 },
+  mapBtns: { flexDirection: 'row', gap: 10, marginBottom: 8 },
+  transitBtn: {
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+    backgroundColor: '#F0FDF4',
+    alignItems: 'center',
+  },
+  transitBtnText: { fontSize: 14, fontWeight: '600', color: '#15803D' },
   mapBtn: {
     flex: 1,
     paddingVertical: 10,
