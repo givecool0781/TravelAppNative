@@ -36,5 +36,10 @@ module.exports = {
       'expo-router',
       '@react-native-community/datetimepicker',
     ],
+    extra: {
+      eas: {
+        projectId: '4f5dc854-9d64-4dac-84c8-c8e9137b94ec',
+      },
+    },
   },
 }
