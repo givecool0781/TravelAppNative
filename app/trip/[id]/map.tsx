@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  SafeAreaView, ScrollView, Linking, Dimensions,
+  ScrollView, Linking,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import MapView, { Marker, Callout } from 'react-native-maps'
 import { useTripContext } from '../../../src/context/TripContext'
@@ -16,7 +17,6 @@ const CATEGORY_ICON = {
   food: '🍽️', attraction: '📸', transport: '🚌', hotel: '🏨', other: '📌',
 }
 
-const { width } = Dimensions.get('window')
 
 interface EventWithDay {
   event: TripEvent
